@@ -1,0 +1,50 @@
+{
+  "volumes": [
+    {
+      "name": "ecs_instance_logs",
+      "host": {
+        "sourcePath": "/var/log"
+      }
+    }
+  ],
+  "containerDefinitions": [
+    {
+      "environment": [],
+      "name": "cloudwatchlogs",
+      "image": "schmutze/cloudwatchlogs",
+      "cpu": 50,
+      "portMappings": [],
+      "memory": 64,
+      "essential": true,
+      "mountPoints": [
+        {
+          "sourceVolume": "ecs_instance_logs",
+          "containerPath": "/mnt/ecs_instance_logs",
+          "readOnly": true
+        }
+      ]
+    },
+    {
+      "environment": [],
+      "name": "httpd",
+      "links": [
+        "cloudwatchlogs"
+      ],
+      "image": "httpd",
+      "cpu": 50,
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "hostPort": 80
+        }
+      ],
+      "memory": 128,
+      "entryPoint": ["/bin/bash", "-c"],
+      "command": [
+        "apt-get update && apt-get -y install wget && echo 'CustomLog \"| /usr/bin/logger -t httpd -p local6.info -n cloudwatchlogs -P 514\" \"%v %h %l %u %t %r %>s %b %{Referer}i %{User-agent}i\"' >> /usr/local/apache2/conf/httpd.conf && echo 'ErrorLogFormat \"%v [%t] [%l] [pid %P] %F: %E: [client %a] %M\"' >> /usr/local/apache2/conf/httpd.conf && echo 'ErrorLog \"| /usr/bin/logger -t httpd -p local7.info -n cloudwatchlogs -P 514\"' >> /usr/local/apache2/conf/httpd.conf && echo ServerName `hostname` >> /usr/local/apache2/conf/httpd.conf && rm -rf /usr/local/apache2/htdocs/* && cd /usr/local/apache2/htdocs && wget -mkEpnp -nH --cut-dirs=4 http://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html && /usr/local/bin/httpd-foreground"
+      ],
+      "essential": true
+    }
+  ],
+  "family": "cloudwatchlogs"
+}
